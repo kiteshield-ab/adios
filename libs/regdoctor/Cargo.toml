@@ -1,0 +1,12 @@
+[package]
+name = "regdoctor"
+version = "0.1.0"
+edition = "2021"
+
+[dev-dependencies]
+svd-parser.workspace = true
+env_logger.workspace = true
+
+[dependencies]
+log.workspace = true
+svd-rs.workspace = true

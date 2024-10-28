@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+members = [
+    "tools/*",
+    "libs/*",
+]
+
+[workspace.dependencies]
+bilge = "0.2.0"
+clap = { version = "4.5.17", features = ["derive", "env"] }
+clio = { version = "0.3.5", features = ["clap-parse"] }
+env_logger = "0.11.5"
+log = "0.4.22"
+nom = "7.1.3"
+nom_locate = "4.2.0"
+quick-xml = { version = "0.36.1", features = ["serialize"] }
+serde = { version = "1.0.210", features = ["derive"] }
+svd-parser = "0.14.6"
+svd-rs = "0.14.9"

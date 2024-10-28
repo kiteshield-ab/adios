@@ -1,0 +1,10 @@
+[package]
+name = "adios-from-sigrok-swd"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+adios-common = { path = "../adios-common" }
+bilge.workspace = true
+log.workspace = true
+nom.workspace = true

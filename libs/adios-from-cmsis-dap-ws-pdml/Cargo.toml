@@ -1,0 +1,11 @@
+[package]
+name = "adios-from-cmsis-dap-ws-pdml"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+adios-common = { path = "../adios-common" }
+bilge.workspace = true
+log.workspace = true
+quick-xml.workspace = true
+serde.workspace = true
