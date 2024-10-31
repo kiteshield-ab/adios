@@ -6,10 +6,11 @@ if pgrep sigrok-cli
 end
 
 # TODO: Try to get the sigrok-cli to run until signal sent instead of setting duration?
+# Unit: seconds
 if set -q DURATION
     set sample_duration $DURATION
 else
-    set sample_duration 3s
+    set sample_duration 4
 end
 
 set script_dir (path dirname (status --current-filename))
@@ -41,11 +42,14 @@ mkdir -p "$log_dir"
 # tshark -i "$usbmon" -w "$out_dir/usb.pcapng" 1>$log_dir/tshark.log 2>$log_dir/tshark.err.log &
 
 echo "Start monitoring SWD"
+echo "Duration is $sample_duration"
 echo "Redirecting logs to $log_dir"
-sigrok-cli -d "$logic_analyzer" -C "$channels" --time "$sample_duration" --config "samplerate=$sample_rate" 1>$log_dir/sigrok.log 2>$log_dir/sigrok.err.log -o "$out_dir/swd.sr" &
+
+sigrok-cli -d "$logic_analyzer" -C "$channels" --time "$sample_duration"s --config "samplerate=$sample_rate" 1>$log_dir/sigrok.log 2>$log_dir/sigrok.err.log -o "$out_dir/swd.sr" &
 
 echo "Running the command.."
-$argv
+# TODO: how to setup timeout, hmm
+timeout (math {$sample_duration}-0.5) $argv
 echo "Command finished. Return code is $status"
 
 # echo "Stop monitoring USB"
