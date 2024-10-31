@@ -48,7 +48,7 @@ impl Database {
                 let identifier = register_desc.identifier();
                 match self.regs.insert(address, register_desc) {
                     Some(previous) => {
-                        log::warn!(
+                        log::info!(
                             "Address collision: [{}] overwrites [{}]",
                             identifier,
                             previous.identifier(),
@@ -73,7 +73,7 @@ impl Database {
                     let identifier = register_desc.identifier();
                     match self.regs.insert(address, register_desc) {
                         Some(previous) => {
-                            log::warn!(
+                            log::info!(
                                 "Address collision: [{}] overwrites [{}]",
                                 identifier,
                                 previous.identifier(),

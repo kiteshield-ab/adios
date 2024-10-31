@@ -13,7 +13,7 @@ fn main() {
         // regdoctor is unhappy about colliding entries in the SVD
         // I'm not sure if turning these into INFOs in the code makes sense.
         // For now, I'm making it less noisy from the probe-compare itself
-        env_logger::Env::default().default_filter_or("regdoctor=error,warn"),
+        env_logger::Env::default().default_filter_or("regdoctor=warn,warn"),
     )
     .init();
 
