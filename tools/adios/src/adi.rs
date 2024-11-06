@@ -40,9 +40,9 @@ pub mod dp {
 #[derive(PartialEq, Eq, Default, Clone, Debug)]
 pub struct Ap {
     pub memory: HashMap<u32, u32>,
-    pub tar: u32,
-    pub csw: ap::Csw,
-    pub idr: ap::Idr,
+    pub tar: Option<u32>,
+    pub csw: Option<ap::Csw>,
+    pub idr: Option<ap::Idr>,
 }
 
 pub mod ap {
@@ -361,17 +361,12 @@ impl VmState {
                     });
                     let csw = &mut self.current_ap_mut().csw;
                     match rw {
-                        RoW::R => *csw = new_csw,
-                        RoW::W => csw.overwrite_rw_fields(&new_csw),
+                        RoW::R => *csw = Some(new_csw),
+                        RoW::W => match csw {
+                            Some(csw) => csw.overwrite_rw_fields(&new_csw),
+                            None => *csw = Some(new_csw),
+                        },
                     }
-                    log::debug!("AP[{apsel}].CSW: {}:{:#0x?}", rw, csw);
-                    operations.push(Operation::ApRegisterAccess {
-                        ts,
-                        rw,
-                        name: "CSW",
-                        value: cmd.data,
-                        apsel,
-                    });
                 }
                 (0x4, rw) => {
                     log::debug!("AP[{apsel}].TAR: {}:{:#0x}", rw, cmd.data);
@@ -383,9 +378,9 @@ impl VmState {
                         apsel,
                     });
                     if rw == RoW::W {
-                        self.current_ap_mut().tar = cmd.data;
+                        self.current_ap_mut().tar = Some(cmd.data);
                     } else {
-                        assert_eq!(self.current_ap().tar, cmd.data);
+                        assert_eq!(self.current_ap().tar, Some(cmd.data));
                     }
                 }
                 (0xc, rw) => {
@@ -398,7 +393,8 @@ impl VmState {
                         value: cmd.data,
                         apsel,
                     });
-                    let addr = self.current_ap().tar;
+                    // Unwrap: If TAR is not set, we have no clue what address we are accessing.
+                    let addr = self.current_ap().tar.unwrap();
                     self.drw_access(&mut operations, ts, rw, addr, cmd.data);
                 }
                 (0x10, rw) => {
@@ -411,7 +407,8 @@ impl VmState {
                         apsel,
                     });
                     // Memory addressing for BDx C.2.6.2, IHI0031G
-                    let addr = self.current_ap().tar & 0xFFFFFFF0;
+                    // Unwrap: If TAR is not set, we have no clue what address we are accessing.
+                    let addr = self.current_ap().tar.unwrap() & 0xFFFFFFF0;
                     self.bd_access(&mut operations, ts, rw, addr, cmd.data);
                 }
                 (0x14, rw) => {
@@ -424,7 +421,8 @@ impl VmState {
                         apsel,
                     });
                     // Memory addressing for BDx C.2.6.2, IHI0031G
-                    let addr = self.current_ap().tar & 0xFFFFFFF0 | 0x4;
+                    // Unwrap: If TAR is not set, we have no clue what address we are accessing.
+                    let addr = self.current_ap().tar.unwrap() & 0xFFFFFFF0 | 0x4;
                     self.bd_access(&mut operations, ts, rw, addr, cmd.data);
                 }
                 (0x18, rw) => {
@@ -437,7 +435,8 @@ impl VmState {
                         apsel,
                     });
                     // Memory addressing for BDx C.2.6.2, IHI0031G
-                    let addr = self.current_ap().tar & 0xFFFFFFF0 | 0x8;
+                    // Unwrap: If TAR is not set, we have no clue what address we are accessing.
+                    let addr = self.current_ap().tar.unwrap() & 0xFFFFFFF0 | 0x8;
                     self.bd_access(&mut operations, ts, rw, addr, cmd.data);
                 }
                 (0x1c, rw) => {
@@ -450,7 +449,8 @@ impl VmState {
                         apsel,
                     });
                     // Memory addressing for BDx C.2.6.2, IHI0031G
-                    let addr = self.current_ap().tar & 0xFFFFFFF0 | 0xc;
+                    // Unwrap: If TAR is not set, we have no clue what address we are accessing.
+                    let addr = self.current_ap().tar.unwrap() & 0xFFFFFFF0 | 0xc;
                     self.bd_access(&mut operations, ts, rw, addr, cmd.data);
                 }
                 (0xf4, rw) => {
@@ -475,7 +475,7 @@ impl VmState {
                 }
                 (0xfc, rw) => {
                     log::debug!("AP[{apsel}].IDR: {}:{:#0x}", rw, cmd.data);
-                    self.current_ap_mut().idr = Idr::from(cmd.data);
+                    self.current_ap_mut().idr = Some(Idr::from(cmd.data));
                     operations.push(Operation::ApRegisterAccess {
                         ts,
                         rw,
@@ -513,7 +513,8 @@ impl VmState {
         address: u32,
         value: u32,
     ) {
-        let csw = self.current_ap().csw;
+        // Unwrap: If CSW is not known, VM does not know data access details
+        let csw = self.current_ap().csw.unwrap();
         let tar_two_lsbs = (address as u8) & 0b11;
         log::debug!("Access size: {:?}", csw.size());
         log::debug!("Address incrementing: {:?}", csw.addr_inc());
@@ -592,7 +593,8 @@ impl VmState {
             value: mem_ap_value,
         });
 
-        let tar = &mut self.current_ap_mut().tar;
+        // Unwrap: If we got here, we must have accessed TAR so it exists for sure
+        let tar = &mut self.current_ap_mut().tar.unwrap();
         match (csw.addr_inc(), csw.size()) {
             (ap::CswAddrInc::Single, ap::CswSize::Word) => *tar += 4,
             (ap::CswAddrInc::Single, ap::CswSize::Halfword) => *tar += 2,
