@@ -3,7 +3,8 @@ use regdoctor::Database;
 fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("error")).init();
 
-    let mimxrt1189_svd = std::fs::read_to_string("../../svds/MIMXRT1189_cm33-SecureExt.svd").unwrap();
+    let mimxrt1189_svd =
+        std::fs::read_to_string("../../svds/MIMXRT1189_cm33-SecureExt.svd").unwrap();
     let cortex_m_svd = std::fs::read_to_string("../../svds/CortexM33.svd").unwrap();
     let mimxrt1189_svd = svd_parser::parse(&mimxrt1189_svd).unwrap();
     let cortex_m_svd = svd_parser::parse(&cortex_m_svd).unwrap();

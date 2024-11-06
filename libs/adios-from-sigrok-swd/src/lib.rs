@@ -173,7 +173,9 @@ impl InnerAp {
     }
 }
 
-pub fn generate_vm_commands(input: &str) -> Result<Vec<Command>, nom::Err<nom::error::Error<&str>>> {
+pub fn generate_vm_commands(
+    input: &str,
+) -> Result<Vec<Command>, nom::Err<nom::error::Error<&str>>> {
     let (_, commands) = all_consuming(many1(command))(input)?;
     Ok(commands.into_iter().flat_map(|v| v).collect())
 }

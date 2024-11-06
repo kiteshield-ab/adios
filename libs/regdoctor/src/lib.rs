@@ -775,7 +775,10 @@ mod tests {
         let device = Database::expand_derived_from_attribute(device);
         let xcache_ps_after = device.get_peripheral("XCACHE_PS").unwrap().deref();
         assert_eq!(xcache_ps_before.registers.iter().count(), 0);
-        assert_eq!(xcache_ps_after.registers().collect::<Vec<_>>(), xcache_pc_before.registers().collect::<Vec<_>>());
+        assert_eq!(
+            xcache_ps_after.registers().collect::<Vec<_>>(),
+            xcache_pc_before.registers().collect::<Vec<_>>()
+        );
         assert!(xcache_ps_before.derived_from.is_some());
         assert!(xcache_ps_after.derived_from.is_none());
     }

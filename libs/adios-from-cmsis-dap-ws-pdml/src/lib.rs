@@ -74,9 +74,7 @@ pub fn generate_vm_input(r: impl BufRead) -> Vec<Input> {
                         // If Ack.Wait, then last valid transfer is `res.transfer_count - 1`
                         let valid_transfers = match res.response.ack() {
                             DapTransferResponseAck::Ok => res.transfer_count,
-                            DapTransferResponseAck::Wait => {
-                                res.transfer_count.saturating_sub(1)
-                            }
+                            DapTransferResponseAck::Wait => res.transfer_count.saturating_sub(1),
                             _ => unreachable!(),
                         };
                         let mut read_data_iter = res.data.iter();
@@ -119,9 +117,7 @@ pub fn generate_vm_input(r: impl BufRead) -> Vec<Input> {
                         // If Ack.Wait, then last valid transfer is `res.transfer_count - 1`
                         let valid_transfers = match res.response.ack() {
                             DapTransferResponseAck::Ok => res.transfer_count,
-                            DapTransferResponseAck::Wait => {
-                                res.transfer_count.saturating_sub(1)
-                            }
+                            DapTransferResponseAck::Wait => res.transfer_count.saturating_sub(1),
                             _ => unreachable!(),
                         } as usize;
                         let data_source = if req.request.rnw() {
@@ -130,8 +126,7 @@ pub fn generate_vm_input(r: impl BufRead) -> Vec<Input> {
                             req.data.iter().copied()
                         };
 
-                        let a =
-                            u2::new(((req.request.a3() as u8) << 1) | (req.request.a2() as u8));
+                        let a = u2::new(((req.request.a3() as u8) << 1) | (req.request.a2() as u8));
                         for data in data_source.take(valid_transfers) {
                             adi_commands.push(
                                 Command {
