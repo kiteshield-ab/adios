@@ -5,12 +5,11 @@ if pgrep sigrok-cli
     exit 1
 end
 
-# TODO: Try to get the sigrok-cli to run until signal sent instead of setting duration?
 # Unit: seconds
-if set -q DURATION
-    set sample_duration $DURATION
+if set -q TIMEOUT
+    set timeout $TIMEOUT
 else
-    set sample_duration 4
+    set timeout 5
 end
 
 set script_dir (path dirname (status --current-filename))
@@ -28,35 +27,17 @@ set out_dir $repo_root/target/sniffing-results
 mkdir -p "$out_dir"
 mkdir -p "$log_dir"
 
-# echo "Start monitoring USB"
-# # https://wiki.wireshark.org/CaptureSetup/USB
-# lsusb=$(lsusb -d "$debug_probe_vid:$debug_probe_pid")
-# lsusb_regex='^Bus 0+(?<bus>\d+) Device 0+(?<device>\d+): .*$'
-# usb_bus=$(echo "$lsusb" | sd "$lsusb_regex" '$bus')
-# usb_device=$(echo "$lsusb" | sd "$lsusb_regex" '$device')
-# usbmon="usbmon$usb_bus"
-# display_filter="usb.bus_id == $usb_bus and usb.device_address == $usb_device"
-# # may need to
-# #     modprobe usbmon
-# #     setfacl -m u:$USER:r /dev/usbmon*
-# tshark -i "$usbmon" -w "$out_dir/usb.pcapng" 1>$log_dir/tshark.log 2>$log_dir/tshark.err.log &
-
 echo "Start monitoring SWD"
-echo "Duration is $sample_duration"
 echo "Redirecting logs to $log_dir"
 
-sigrok-cli -d "$logic_analyzer" -C "$channels" --time "$sample_duration"s --config "samplerate=$sample_rate" 1>$log_dir/sigrok.log 2>$log_dir/sigrok.err.log -o "$out_dir/swd.sr" &
+sigrok-cli -d "$logic_analyzer" -C "$channels" --time (math {$timeout} + 3)s --config "samplerate=$sample_rate" 1>$log_dir/sigrok.log 2>$log_dir/sigrok.err.log -o "$out_dir/swd.sr" &
+
+# Give sigrok time to warm up I guess
+sleep 2
 
 echo "Running the command.."
-# TODO: how to setup timeout, hmm
-timeout (math {$sample_duration}-0.5) $argv
-echo "Command finished. Return code is $status"
-
-# echo "Stop monitoring USB"
-# killall --wait -SIGINT tshark
-# echo "Post-processing captured USB"
-# # tshark does what it is told, but complains about the end of the file because of the abrupt stop
-# tshark -r "$out_dir/usb.pcapng" -Y "$display_filter" -w "$out_dir/usb.pcapng" 1>>$log_dir/tshark.log 2>>$log_dir/tshark.err.log || true
+timeout $timeout $argv
+echo "Command finished/timed out. Return code is $status"
 
 echo "Waiting for the background SWD monitoring to finish..."
 wait (jobs -p)
