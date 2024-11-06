@@ -189,18 +189,18 @@ fn simple_command(input: &str) -> IResult<&str, Vec<Command>> {
     // Do not propagate certain accesses.
     // - RDBUFF is relevant only if following AP read operation (complex command) and then it should be merged with it
     let command = match ll_command {
-        Some(command) => match &command.access_id {
+        ll::MaybeCommand::Ok(command) => match &command.access_id {
             AccessId::Dp(Dp::R(ReadDp::Rdbuff)) => None,
             _ => Some(command.into()),
         },
-        None => None,
+        _ => None,
     };
     Ok((input, command.into_iter().collect()))
 }
 
 fn complex_command(input: &str) -> IResult<&str, Vec<Command>> {
     let (input, ll_commands) = many1(ll::command(AccessId::complex, false))(input)?;
-    if ll_commands.iter().any(|v| v.is_none()) {
+    if ll_commands.iter().any(|v| v.is_not_ok()) {
         // TODO: No real-life example of this, hard to determine how to handle it
         log::error!("R APx FAULTs? Parsing might be incomplete");
         // Cleanup? All of this is theoretical
@@ -208,10 +208,10 @@ fn complex_command(input: &str) -> IResult<&str, Vec<Command>> {
         return Ok((input, Vec::new()));
     }
 
-    let ll_commands: Vec<_> = ll_commands.into_iter().filter_map(|v| v).collect();
+    let ll_commands: Vec<_> = ll_commands.into_iter().map(|v| v.unwrap()).collect();
 
     let (input, rdbuff_ll_command) = ll::command(Dp::rdbuff, true)(input)?;
-    let Some(rdbuff_ll_command) = rdbuff_ll_command else {
+    let ll::MaybeCommand::Ok(rdbuff_ll_command) = rdbuff_ll_command else {
         return Ok((input, Vec::new()));
     };
 
@@ -242,6 +242,32 @@ fn complex_command(input: &str) -> IResult<&str, Vec<Command>> {
 
 mod ll {
     use super::*;
+    pub(super) enum Input {}
+
+    pub(super) enum MaybeCommand {
+        GotBoredOfWaits,
+        Fault,
+        Ok(Command),
+    }
+
+    impl MaybeCommand {
+        pub(super) fn is_not_ok(&self) -> bool {
+            if let Self::Ok(_) = self {
+                false
+            } else {
+                true
+            }
+        }
+
+        pub(super) fn unwrap(self) -> Command {
+            match self {
+                MaybeCommand::GotBoredOfWaits => panic!("unwrapped when GotBoredOfWaits"),
+                MaybeCommand::Fault => panic!("unwrapped when Fault"),
+                MaybeCommand::Ok(v) => v,
+            }
+        }
+    }
+
     pub(super) struct Command {
         pub(super) ts: Timestamp,
         pub(super) access_id: AccessId,
@@ -262,7 +288,7 @@ mod ll {
     pub fn command(
         command: impl FnMut(&str) -> IResult<&str, AccessId> + Copy,
         eof_ok: bool,
-    ) -> impl FnMut(&str) -> IResult<&str, Option<Command>> {
+    ) -> impl FnMut(&str) -> IResult<&str, MaybeCommand> {
         move |input| {
             enum Ack {
                 Ok,
@@ -282,7 +308,7 @@ mod ll {
                     many0(pair(line(access_id.tag(), false), line(tag("WAIT"), true)))(input)?;
                 let (input, count) = many0_count(line(access_id.tag(), false))(input)?;
                 if count == 0 {
-                    return Ok((input, None));
+                    return Ok((input, MaybeCommand::GotBoredOfWaits));
                 }
                 // Very improbable case in real life. Usually when WAIT occurs, SWD is screwed up.
                 let (input, (.., ack)) = line(
@@ -298,7 +324,7 @@ mod ll {
                     let (input, (end_ts, value)) = line(value, eof_ok)(input)?;
                     Ok((
                         input,
-                        Some(Command {
+                        MaybeCommand::Ok(Command {
                             ts: Timestamp {
                                 start: start_ts.start,
                                 end: end_ts.end,
@@ -311,7 +337,7 @@ mod ll {
                 Ack::Wait => {
                     unreachable!("Another WAIT? Come on.");
                 }
-                Ack::Fault => Ok((input, None)),
+                Ack::Fault => Ok((input, MaybeCommand::Fault)),
             }
         }
     }
