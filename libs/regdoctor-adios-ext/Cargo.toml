@@ -1,0 +1,8 @@
+[package]
+name = "regdoctor-adios-ext"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+regdoctor = { path = "../../libs/regdoctor" }
+svd-parser.workspace = true

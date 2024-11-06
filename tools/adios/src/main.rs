@@ -31,9 +31,8 @@ fn main() {
         cli::Mode::CmsisDapWsPdml => {
             let pdml_file = BufReader::new(args.input);
             adios_from_cmsis_dap_ws_pdml::generate_vm_input(pdml_file)
-        },
-        cli::Mode::SigrokSwd =>
-            {
+        }
+        cli::Mode::SigrokSwd => {
             let mut swd_string = String::new();
             args.input.read_to_string(&mut swd_string).unwrap();
             adios_from_sigrok_swd::generate_vm_commands(&swd_string)
@@ -41,7 +40,7 @@ fn main() {
                 .into_iter()
                 .map(|v| v.into())
                 .collect()
-            },
+        }
     };
 
     let mut vm = adi::Vm::new();

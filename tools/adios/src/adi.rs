@@ -1,3 +1,4 @@
+use ap::Idr;
 use bilge::prelude::*;
 use std::{
     collections::HashMap,
@@ -5,7 +6,7 @@ use std::{
     rc::Rc,
 };
 
-use adios_common::{Timestamp, Input};
+use adios_common::{Input, Timestamp};
 
 pub struct Vm {
     command_cursor: usize,
@@ -41,9 +42,12 @@ pub struct Ap {
     pub memory: HashMap<u32, u32>,
     pub tar: u32,
     pub csw: ap::Csw,
+    pub idr: ap::Idr,
 }
 
 pub mod ap {
+    use regdoctor_adios_ext::CswType;
+
     use super::*;
 
     #[bitsize(32)]
@@ -90,6 +94,62 @@ pub mod ap {
         // Doubleword = 0b011,
         // Bits128 = 0b100,
         // Bits256 = 0b101,
+    }
+
+    #[bitsize(32)]
+    #[derive(Default, FromBits, Copy, Clone, DebugBits, PartialEq, Eq)]
+    pub struct Idr {
+        pub type_: IdrType,
+        pub variant: u4,
+        pub res0: u5,
+        pub class: IdrClass,
+        pub designed: u11,
+        pub revision: u4,
+    }
+
+    #[bitsize(4)]
+    #[repr(u8)]
+    #[derive(FromBits, Copy, Clone, Debug, PartialEq, Eq)]
+    pub enum IdrType {
+        JtagConnectionOrComAp = 0x0,
+        AmbaAhb3Bus = 0x1,
+        AmbaApb2OrApb3Bus = 0x2,
+        AmbaAxi3OrAxi4BusWithOptionalAceLiteSupport = 0x4,
+        AmbaAhb5Bus = 0x5,
+        AmbaApb4AndApb5Bus = 0x6,
+        AmbaAxi5Bus = 0x7,
+        AmbaAhb5WithEnhancedHprot = 0x8,
+        #[fallback]
+        Reserved(u4),
+    }
+
+    impl IdrType {
+        pub fn is_unknown(&self) -> bool {
+            *self == Self::default()
+        }
+
+        pub fn csw_type(&self) -> CswType {
+            match self {
+                Self::AmbaAhb3Bus => CswType::AmbaAhb3,
+                _ => CswType::Generic,
+            }
+        }
+    }
+
+    impl Default for IdrType {
+        fn default() -> Self {
+            Self::Reserved(u4::new(0b0))
+        }
+    }
+
+    #[bitsize(4)]
+    #[derive(Default, FromBits, Copy, Clone, Debug, PartialEq, Eq)]
+    pub enum IdrClass {
+        #[default]
+        #[fallback]
+        Undefined = 0b0000,
+        ComAccessPort = 0b0001,
+        MemoryAccessPort = 0b1000,
     }
 }
 
@@ -415,6 +475,7 @@ impl VmState {
                 }
                 (0xfc, rw) => {
                     log::debug!("AP[{apsel}].IDR: {}:{:#0x}", rw, cmd.data);
+                    self.current_ap_mut().idr = Idr::from(cmd.data);
                     operations.push(Operation::ApRegisterAccess {
                         ts,
                         rw,

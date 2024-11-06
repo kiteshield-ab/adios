@@ -18,6 +18,7 @@ dependencies = [
  "nom_locate",
  "quick-xml",
  "regdoctor",
+ "regdoctor-adios-ext",
  "serde",
  "svd-parser",
 ]
@@ -427,6 +428,14 @@ dependencies = [
  "log",
  "svd-parser",
  "svd-rs",
+]
+
+[[package]]
+name = "regdoctor-adios-ext"
+version = "0.1.0"
+dependencies = [
+ "regdoctor",
+ "svd-parser",
 ]
 
 [[package]]

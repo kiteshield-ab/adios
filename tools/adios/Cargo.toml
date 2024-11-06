@@ -8,6 +8,7 @@ adios-common = { path = "../../libs/adios-common" }
 adios-from-cmsis-dap-ws-pdml = { path = "../../libs/adios-from-cmsis-dap-ws-pdml" }
 adios-from-sigrok-swd = { path = "../../libs/adios-from-sigrok-swd" }
 regdoctor = { path = "../../libs/regdoctor" }
+regdoctor-adios-ext = { path = "../../libs/regdoctor-adios-ext" }
 nom.workspace = true
 bilge.workspace = true
 env_logger.workspace = true
