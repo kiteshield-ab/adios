@@ -39,7 +39,6 @@ impl Database {
                 let register = register.deref();
                 let address = base_address + register.address_offset as u64;
                 let register_desc = RegisterInfo {
-                    address,
                     device_name: device.name.clone(),
                     peripheral_name: peripheral.name.clone(),
                     cluster_name: None,
@@ -64,7 +63,6 @@ impl Database {
                     let register = register.deref();
                     let address = base_address + register.address_offset as u64;
                     let register_desc = RegisterInfo {
-                        address,
                         device_name: device.name.clone(),
                         peripheral_name: peripheral.name.clone(),
                         cluster_name: Some(cluster.name.clone()),
@@ -129,7 +127,6 @@ impl Database {
 
 #[derive(Clone)]
 pub struct RegisterInfo {
-    address: u64,
     device_name: String,
     peripheral_name: String,
     /// Name of the cluster if it belongs to one
@@ -173,7 +170,6 @@ impl RegisterInfo {
                     Some(variant_value) if variant_value == field_value => {
                         fields.push(Field {
                             info: field.clone(),
-                            parent_info: self.clone(),
                             value: field_value,
                             variant: Some(variant),
                         });
@@ -194,13 +190,11 @@ impl RegisterInfo {
             let field = match catch_all_variant {
                 Some(catch_all_variant) => Field {
                     info: field.clone(),
-                    parent_info: self.clone(),
                     value: field_value,
                     variant: Some(catch_all_variant),
                 },
                 None => Field {
                     info: field.clone(),
-                    parent_info: self.clone(),
                     value: field_value,
                     variant: None,
                 },
@@ -335,7 +329,6 @@ pub struct FieldDiff {
 }
 
 pub struct Field {
-    pub parent_info: RegisterInfo,
     pub info: FieldInfo,
     pub value: u64,
     pub variant: Option<EnumeratedValue>,
