@@ -10,7 +10,7 @@ use nom::{
     IResult, Parser,
 };
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 enum AccessId {
     Dp(Dp),
     Ap(Ap),
@@ -71,7 +71,7 @@ impl AccessId {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 enum Dp {
     R(ReadDp),
     W(WriteDp),
@@ -99,6 +99,8 @@ impl Dp {
             tag("IDCODE").map(|_| AccessId::Dp(Self::R(ReadDp::IdCode))),
             tag("R CTRL/STAT").map(|_| AccessId::Dp(Self::R(ReadDp::CtrlStat))),
             tag("RESEND").map(|_| AccessId::Dp(Self::R(ReadDp::Resend))),
+            // TODO: This probably can be removed and then simple_command can be simplified
+            // not to ignore rdbuff??
             Self::rdbuff,
             tag("W ABORT").map(|_| AccessId::Dp(Self::W(WriteDp::Abort))),
             tag("W CTRL/STAT").map(|_| AccessId::Dp(Self::W(WriteDp::CtrlStat))),
@@ -107,7 +109,7 @@ impl Dp {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 enum ReadDp {
     IdCode = 0x0,
     CtrlStat = 0x4,
@@ -115,14 +117,14 @@ enum ReadDp {
     Rdbuff = 0xC,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 enum WriteDp {
     Abort = 0x0,
     CtrlStat = 0x4,
     Select = 0x8,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 enum Ap {
     R(InnerAp),
     W(InnerAp),
@@ -154,7 +156,7 @@ impl Ap {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 enum InnerAp {
     One = 0x0,
     Two = 0x4,
@@ -188,13 +190,11 @@ fn simple_command(input: &str) -> IResult<&str, Vec<Input>> {
     // - RDBUFF is relevant only if following AP read operation (complex command) and then it should be merged with it
     let command = match ll_command {
         ll::MaybeCommand::Ok(command) => match &command.access_id {
+            // TODO: This is probably over-complicated, consider removing rdbuff handling from Dp::parse
             AccessId::Dp(Dp::R(ReadDp::Rdbuff)) => None,
             _ => Some(Input::Command(command.into())),
         },
-        ll::MaybeCommand::GotBoredOfWaits => Some(Input::simple_landmark(
-            "WAIT spam with no resolution occurred",
-        )),
-        ll::MaybeCommand::Fault => Some(Input::simple_landmark("FAULT occurred")),
+        v => Some(v.into()),
     };
     Ok((input, command.into_iter().collect()))
 }
@@ -208,32 +208,15 @@ fn complex_command(input: &str) -> IResult<&str, Vec<Input>> {
         let (input, _) = many0(ll::command(Dp::rdbuff, true))(input)?;
         return Ok((
             input,
-            core::iter::once(Input::simple_landmark("FAULT occurred amoung R APx, unclear how to generate a command, result is presumably incomplete.")).collect()));
+            core::iter::once(Input::landmark("FAULT occurred amoung R APx, unclear how to generate a command, result is presumably incomplete.")).collect()));
     }
 
     let ll_commands: Vec<_> = ll_commands.into_iter().map(|v| v.unwrap()).collect();
 
     let (input, rdbuff_ll_command) = ll::command(Dp::rdbuff, true)(input)?;
     let rdbuff_ll_command = match rdbuff_ll_command {
-        ll::MaybeCommand::GotBoredOfWaits => {
-            return Ok((
-                input,
-                core::iter::once(Input::simple_landmark(
-                    "WAIT spam with no resolution occurred when reading out RDBUFF",
-                ))
-                .collect(),
-            ))
-        }
-        ll::MaybeCommand::Fault => {
-            return Ok((
-                input,
-                core::iter::once(Input::simple_landmark(
-                    "FAULT occurred when reading out RDBUFF",
-                ))
-                .collect(),
-            ))
-        }
         ll::MaybeCommand::Ok(cmd) => cmd,
+        v => return Ok((input, core::iter::once(v.into()).collect())),
     };
 
     let commands = ll_commands
@@ -266,8 +249,8 @@ fn complex_command(input: &str) -> IResult<&str, Vec<Input>> {
 mod ll {
     use super::*;
     pub(super) enum MaybeCommand {
-        GotBoredOfWaits,
-        Fault,
+        GotBoredOfWaits(AccessId),
+        Fault(AccessId),
         Ok(Command),
     }
 
@@ -282,9 +265,25 @@ mod ll {
 
         pub(super) fn unwrap(self) -> Command {
             match self {
-                MaybeCommand::GotBoredOfWaits => panic!("unwrapped when GotBoredOfWaits"),
-                MaybeCommand::Fault => panic!("unwrapped when Fault"),
+                MaybeCommand::GotBoredOfWaits(access_id) => {
+                    panic!("unwrapped when GotBoredOfWaits({access_id:?})")
+                }
+                MaybeCommand::Fault(access_id) => panic!("unwrapped when Fault({access_id:?}"),
                 MaybeCommand::Ok(v) => v,
+            }
+        }
+    }
+
+    impl From<MaybeCommand> for Input {
+        fn from(value: MaybeCommand) -> Self {
+            match value {
+                MaybeCommand::GotBoredOfWaits(access_id) => Input::Landmark(format!(
+                    "WAIT spam with no resolution occurred when trying to {access_id:?}"
+                )),
+                MaybeCommand::Fault(access_id) => Input::Landmark(format!(
+                    "FAULT occurred when trying to {access_id:?}"
+                )),
+                MaybeCommand::Ok(command) => Input::Command(command.into()),
             }
         }
     }
@@ -329,7 +328,7 @@ mod ll {
                     many0(pair(line(access_id.tag(), false), line(tag("WAIT"), true)))(input)?;
                 let (input, count) = many0_count(line(access_id.tag(), false))(input)?;
                 if count == 0 {
-                    return Ok((input, MaybeCommand::GotBoredOfWaits));
+                    return Ok((input, MaybeCommand::GotBoredOfWaits(access_id)));
                 }
                 // Very improbable case in real life. Usually when WAIT occurs, SWD is screwed up.
                 let (input, (.., ack)) = line(
@@ -358,7 +357,7 @@ mod ll {
                 Ack::Wait => {
                     unreachable!("Another WAIT? Come on.");
                 }
-                Ack::Fault => Ok((input, MaybeCommand::Fault)),
+                Ack::Fault => Ok((input, MaybeCommand::Fault(access_id))),
             }
         }
     }
@@ -423,18 +422,14 @@ mod test {
 1337-71 swd-1: 0x5ba02477
 ";
         let commands = generate_vm_commands(text_sample).unwrap();
-        let expected_commands = [Command {
+        let expected_commands = [Input::Command(Command {
             ts: Some(Timestamp { start: 17, end: 71 }),
             apndp: false,
             rnw: true,
             a: u2::new(0),
             data: 0x5ba02477,
-        }];
-        assert_eq!(commands.len(), expected_commands.len());
-        commands
-            .into_iter()
-            .zip(expected_commands.into_iter())
-            .for_each(|(ac, ex)| assert_eq!(ac, ex));
+        })];
+        assert_eq!(commands, expected_commands);
     }
 
     #[test]
@@ -454,22 +449,18 @@ mod test {
 1337-71 swd-1: 0x5ba02477
 ";
         let commands = generate_vm_commands(text_sample).unwrap();
-        let expected_commands = [Command {
+        let expected_commands = [Input::Command(Command {
             ts: Some(Timestamp { start: 17, end: 71 }),
             apndp: false,
             rnw: true,
             a: u2::new(0),
             data: 0x5ba02477,
-        }];
-        assert_eq!(commands.len(), expected_commands.len());
-        commands
-            .into_iter()
-            .zip(expected_commands.into_iter())
-            .for_each(|(ac, ex)| assert_eq!(ac, ex));
+        })];
+        assert_eq!(commands, expected_commands);
     }
 
     #[test]
-    fn simple_command_with_wait_with_interrupt() {
+    fn simple_command_following_unresolved_wait_spam() {
         let text_sample = "1337-1337 swd-1: IDCODE
 1337-1337 swd-1: WAIT
 1337-1337 swd-1: IDCODE
@@ -488,21 +479,18 @@ mod test {
 1337-71 swd-1: 0x5ba02477
 ";
         let commands = generate_vm_commands(text_sample).unwrap();
-        let expected_commands = [Command {
+        let expected_commands = [Input::Command(Command {
             ts: Some(Timestamp { start: 17, end: 71 }),
             apndp: false,
             rnw: true,
             a: u2::new(0),
             data: 0x5ba02477,
-        }];
-        assert_eq!(commands.len(), expected_commands.len());
-        commands
-            .into_iter()
-            .zip(expected_commands.into_iter())
-            .for_each(|(ac, ex)| assert_eq!(ac, ex));
+        })];
+        // First is the landmark, second is the correct command
+        assert_eq!(&commands[1..], expected_commands);
+        assert!(matches!(commands[0], Input::Landmark(_)));
     }
 
-    #[test]
     fn simple_command_with_wait_and_switch() {
         let text_sample = "1337-1337 swd-1: IDCODE
 1337-1337 swd-1: WAIT
@@ -523,18 +511,15 @@ mod test {
 1337-71 swd-1: 0xdeadbeef
 ";
         let commands = generate_vm_commands(text_sample).unwrap();
-        let expected_commands = [Command {
+        let expected_commands = [Input::Command(Command {
             ts: Some(Timestamp { start: 17, end: 71 }),
             apndp: false,
             rnw: false,
             a: u2::new(0),
             data: 0xdeadbeef,
-        }];
-        assert_eq!(commands.len(), expected_commands.len());
-        commands
-            .into_iter()
-            .zip(expected_commands.into_iter())
-            .for_each(|(ac, ex)| assert_eq!(ac, ex));
+        })];
+        // TODO: Fix when landmark contains the access_id
+        assert_eq!(commands, expected_commands);
     }
 
     #[test]
@@ -549,18 +534,14 @@ mod test {
 1337-1337 swd-1: OK
 1337-1337 swd-1: 0x01100001";
         let commands = generate_vm_commands(text_sample).unwrap();
-        let expected_commands = [Command {
+        let expected_commands = [Input::Command(Command {
             ts: Some(Timestamp { start: 17, end: 71 }),
             apndp: false,
             rnw: true,
             a: u2::new(0),
             data: 0x1,
-        }];
-        assert_eq!(commands.len(), expected_commands.len());
-        commands
-            .into_iter()
-            .zip(expected_commands.into_iter())
-            .for_each(|(ac, ex)| assert_eq!(ac, ex));
+        })];
+        assert_eq!(commands, expected_commands);
     }
     #[test]
     fn ignore_faults() {
@@ -573,18 +554,16 @@ mod test {
 1337-1337 swd-1: R APc
 1337-1337 swd-1: FAULT";
         let commands = generate_vm_commands(text_sample).unwrap();
-        let expected_commands = [Command {
+        let expected_commands = [Input::Command(Command {
             ts: Some(Timestamp { start: 17, end: 71 }),
             apndp: false,
             rnw: true,
             a: u2::new(0),
             data: 0x1,
-        }];
-        assert_eq!(commands.len(), expected_commands.len());
-        commands
-            .into_iter()
-            .zip(expected_commands.into_iter())
-            .for_each(|(ac, ex)| assert_eq!(ac, ex));
+        })];
+        // First is the command, second is the landmark with the fault
+        assert_eq!(&commands[..1], expected_commands);
+        assert!(matches!(commands[1], Input::Landmark(_)));
     }
 
     #[test]
@@ -606,40 +585,36 @@ mod test {
 1337-51 swd-1: 0x00000004";
         let commands = generate_vm_commands(text_sample).unwrap();
         let expected_commands = [
-            Command {
+            Input::Command(Command {
                 ts: Some(Timestamp { start: 12, end: 21 }),
                 apndp: true,
                 rnw: true,
                 a: u2::new(0),
                 data: 0x1,
-            },
-            Command {
+            }),
+            Input::Command(Command {
                 ts: Some(Timestamp { start: 13, end: 31 }),
                 apndp: true,
                 rnw: true,
                 a: u2::new(1),
                 data: 0x2,
-            },
-            Command {
+            }),
+            Input::Command(Command {
                 ts: Some(Timestamp { start: 14, end: 41 }),
                 apndp: true,
                 rnw: true,
                 a: u2::new(2),
                 data: 0x3,
-            },
-            Command {
+            }),
+            Input::Command(Command {
                 ts: Some(Timestamp { start: 15, end: 51 }),
                 apndp: true,
                 rnw: true,
                 a: u2::new(3),
                 data: 0x4,
-            },
+            }),
         ];
-        assert_eq!(commands.len(), expected_commands.len());
-        commands
-            .into_iter()
-            .zip(expected_commands.into_iter())
-            .for_each(|(ac, ex)| assert_eq!(ac, ex));
+        assert_eq!(commands, expected_commands);
     }
 
     #[test]
@@ -671,39 +646,35 @@ mod test {
 ";
         let commands = generate_vm_commands(text_sample).unwrap();
         let expected_commands = [
-            Command {
+            Input::Command(Command {
                 ts: Some(Timestamp { start: 12, end: 21 }),
                 apndp: true,
                 rnw: true,
                 a: u2::new(0),
                 data: 0x0,
-            },
-            Command {
+            }),
+            Input::Command(Command {
                 ts: Some(Timestamp { start: 13, end: 31 }),
                 apndp: true,
                 rnw: true,
                 a: u2::new(1),
                 data: 0x1,
-            },
-            Command {
+            }),
+            Input::Command(Command {
                 ts: Some(Timestamp { start: 14, end: 41 }),
                 apndp: true,
                 rnw: true,
                 a: u2::new(2),
                 data: 0x2,
-            },
-            Command {
+            }),
+            Input::Command(Command {
                 ts: Some(Timestamp { start: 15, end: 51 }),
                 apndp: true,
                 rnw: true,
                 a: u2::new(3),
                 data: 0x3,
-            },
+            }),
         ];
-        assert_eq!(commands.len(), expected_commands.len());
-        commands
-            .into_iter()
-            .zip(expected_commands.into_iter())
-            .for_each(|(ac, ex)| assert_eq!(ac, ex));
+        assert_eq!(commands, expected_commands);
     }
 }

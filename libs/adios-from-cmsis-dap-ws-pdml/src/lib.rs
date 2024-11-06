@@ -1,7 +1,7 @@
 pub(crate) mod cmsis_dap;
 pub(crate) mod pdml;
 
-use std::{fmt::Display, io::BufRead, rc::Rc};
+use std::{fmt::Display, io::BufRead};
 
 use adios_common::{Command, Input};
 use bilge::prelude::*;
@@ -173,8 +173,7 @@ pub fn generate_vm_input(r: impl BufRead) -> Vec<Input> {
                             request_data: request_data.clone(),
                             response_data: response_data.clone(),
                         };
-                        let metadata = Rc::new(metadata);
-                        adi_commands.push(Input::Landmark { metadata });
+                        adi_commands.push(Input::Landmark(format!("{metadata}")));
                     }
                     (req, res) => {
                         log::info!("Request ({}): {:#0X?}", request.number, req);

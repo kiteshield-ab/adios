@@ -109,7 +109,7 @@ fn main() {
                     let rw_arrow = rw.arrow();
                     println!("{rw}:AP[{apsel}].{name} {rw_arrow} {value:#010x}");
                 }
-                adi::Operation::Landmark { metadata } => {
+                adi::Operation::Landmark { message: metadata } => {
                     println!("!:{metadata}");
                 }
                 _ => {}

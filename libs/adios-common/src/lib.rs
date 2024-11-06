@@ -1,5 +1,3 @@
-use std::{fmt::Display, rc::Rc};
-
 use bilge::prelude::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -26,16 +24,16 @@ impl From<Command> for Input {
 }
 
 /// API boundary between input parsers and the ADI VM
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Input {
     /// To inject something display'able into the VM stepping
-    Landmark { metadata: Rc<dyn Display> },
+    Landmark(String),
     /// Actual command pushing the VM forward
     Command(Command),
 }
 
 impl Input {
-    pub fn simple_landmark(data: impl Into<String>) -> Self {
-        Self::Landmark { metadata: Rc::new(data.into()) }
+    pub fn landmark(s: impl Into<String>) -> Self {
+        Self::Landmark(s.into())
     }
 }

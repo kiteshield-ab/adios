@@ -3,7 +3,6 @@ use bilge::prelude::*;
 use std::{
     collections::HashMap,
     fmt::{Debug, Display},
-    rc::Rc,
 };
 
 use adios_common::{Input, Timestamp};
@@ -224,8 +223,8 @@ impl VmState {
     fn step(&mut self, cmd: Input) -> Vec<Operation> {
         let mut operations = Vec::new();
         let cmd = match cmd {
-            Input::Landmark { metadata } => {
-                operations.push(Operation::Landmark { metadata });
+            Input::Landmark(message) => {
+                operations.push(Operation::Landmark { message });
                 return operations;
             }
             Input::Command(cmd) => cmd,
@@ -642,7 +641,7 @@ pub struct VmStateStep {
 
 pub enum Operation {
     Landmark {
-        metadata: Rc<dyn Display>,
+        message: String,
     },
     DpRegisterAccess {
         ts: Option<Timestamp>,
