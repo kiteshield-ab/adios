@@ -33,7 +33,7 @@ $svds \
 echo "file $out_file_swd generated" && \
 \
 cargo run --release -- \
---mode sigrok-swd  -M --dp --ap --ts \
+--mode sigrok-swd -m -M --dp --ap --ts \
 --input $input \
 $svds \
 > $out_file_swd_with_ts && \
