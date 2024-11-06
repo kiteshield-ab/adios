@@ -25,10 +25,17 @@ impl From<Command> for Input {
     }
 }
 
+/// API boundary between input parsers and the ADI VM
 #[derive(Clone)]
 pub enum Input {
     /// To inject something display'able into the VM stepping
     Landmark { metadata: Rc<dyn Display> },
     /// Actual command pushing the VM forward
     Command(Command),
+}
+
+impl Input {
+    pub fn simple_landmark(data: impl Into<String>) -> Self {
+        Self::Landmark { metadata: Rc::new(data.into()) }
+    }
 }

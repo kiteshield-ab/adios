@@ -1,4 +1,4 @@
-use adios_common::{Command, Timestamp};
+use adios_common::{Command, Input, Timestamp};
 use bilge::prelude::*;
 use nom::{
     branch::alt,
@@ -173,46 +173,67 @@ impl InnerAp {
     }
 }
 
-pub fn generate_vm_commands(
-    input: &str,
-) -> Result<Vec<Command>, nom::Err<nom::error::Error<&str>>> {
+pub fn generate_vm_commands(input: &str) -> Result<Vec<Input>, nom::Err<nom::error::Error<&str>>> {
     let (_, commands) = all_consuming(many1(command))(input)?;
     Ok(commands.into_iter().flat_map(|v| v).collect())
 }
 
-fn command(input: &str) -> IResult<&str, Vec<Command>> {
+fn command(input: &str) -> IResult<&str, Vec<Input>> {
     alt((simple_command, complex_command, ll::ignored_commands))(input)
 }
 
-fn simple_command(input: &str) -> IResult<&str, Vec<Command>> {
+fn simple_command(input: &str) -> IResult<&str, Vec<Input>> {
     let (input, ll_command) = ll::command(AccessId::simple, true)(input)?;
     // Do not propagate certain accesses.
     // - RDBUFF is relevant only if following AP read operation (complex command) and then it should be merged with it
     let command = match ll_command {
         ll::MaybeCommand::Ok(command) => match &command.access_id {
             AccessId::Dp(Dp::R(ReadDp::Rdbuff)) => None,
-            _ => Some(command.into()),
+            _ => Some(Input::Command(command.into())),
         },
-        _ => None,
+        ll::MaybeCommand::GotBoredOfWaits => Some(Input::simple_landmark(
+            "WAIT spam with no resolution occurred",
+        )),
+        ll::MaybeCommand::Fault => Some(Input::simple_landmark("FAULT occurred")),
     };
     Ok((input, command.into_iter().collect()))
 }
 
-fn complex_command(input: &str) -> IResult<&str, Vec<Command>> {
+fn complex_command(input: &str) -> IResult<&str, Vec<Input>> {
     let (input, ll_commands) = many1(ll::command(AccessId::complex, false))(input)?;
     if ll_commands.iter().any(|v| v.is_not_ok()) {
         // TODO: No real-life example of this, hard to determine how to handle it
         log::error!("R APx FAULTs? Parsing might be incomplete");
         // Cleanup? All of this is theoretical
         let (input, _) = many0(ll::command(Dp::rdbuff, true))(input)?;
-        return Ok((input, Vec::new()));
+        return Ok((
+            input,
+            core::iter::once(Input::simple_landmark("FAULT occurred amoung R APx, unclear how to generate a command, result is presumably incomplete.")).collect()));
     }
 
     let ll_commands: Vec<_> = ll_commands.into_iter().map(|v| v.unwrap()).collect();
 
     let (input, rdbuff_ll_command) = ll::command(Dp::rdbuff, true)(input)?;
-    let ll::MaybeCommand::Ok(rdbuff_ll_command) = rdbuff_ll_command else {
-        return Ok((input, Vec::new()));
+    let rdbuff_ll_command = match rdbuff_ll_command {
+        ll::MaybeCommand::GotBoredOfWaits => {
+            return Ok((
+                input,
+                core::iter::once(Input::simple_landmark(
+                    "WAIT spam with no resolution occurred when reading out RDBUFF",
+                ))
+                .collect(),
+            ))
+        }
+        ll::MaybeCommand::Fault => {
+            return Ok((
+                input,
+                core::iter::once(Input::simple_landmark(
+                    "FAULT occurred when reading out RDBUFF",
+                ))
+                .collect(),
+            ))
+        }
+        ll::MaybeCommand::Ok(cmd) => cmd,
     };
 
     let commands = ll_commands
@@ -225,15 +246,17 @@ fn complex_command(input: &str) -> IResult<&str, Vec<Command>> {
         )
         .map(|(l, r)| {
             // Offset by one
-            ll::Command {
-                ts: Timestamp {
-                    start: l.ts.start,
-                    end: r.ts.end,
-                },
-                access_id: l.access_id,
-                value: r.value,
-            }
-            .into()
+            Input::Command(
+                ll::Command {
+                    ts: Timestamp {
+                        start: l.ts.start,
+                        end: r.ts.end,
+                    },
+                    access_id: l.access_id,
+                    value: r.value,
+                }
+                .into(),
+            )
         })
         .collect();
 
@@ -242,8 +265,6 @@ fn complex_command(input: &str) -> IResult<&str, Vec<Command>> {
 
 mod ll {
     use super::*;
-    pub(super) enum Input {}
-
     pub(super) enum MaybeCommand {
         GotBoredOfWaits,
         Fault,
@@ -362,7 +383,7 @@ mod ll {
 
     // TODO: Maybe VM should be reset when LINERESET encountered.
     // OTOH, CMSIS_DAP based VM does nothing on DAP_Connect
-    pub fn ignored_commands(input: &str) -> IResult<&str, Vec<super::Command>> {
+    pub fn ignored_commands(input: &str) -> IResult<&str, Vec<super::Input>> {
         let (input, _) =
             alt((line(tag("LINERESET"), false), line(tag("JTAG->SWD"), false)))(input)?;
         Ok((input, Vec::new()))
