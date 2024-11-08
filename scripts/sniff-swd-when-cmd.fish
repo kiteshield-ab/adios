@@ -18,7 +18,7 @@ set repo_root $script_dir/..
 # debug_probe_vid=1fc9
 # debug_probe_pid=0143
 
-set sample_rate 1M
+set sample_rate 2M
 set logic_analyzer dreamsourcelab-dslogic
 set channels "3=SWDIO,4=SWCLK,6=SWO"
 set out_dir $repo_root/target/sniffing-results
@@ -37,8 +37,16 @@ sigrok-cli -d "$logic_analyzer" -C "$channels" --time $sigrok_timeout --config "
 # Give sigrok time to warm up I guess
 sleep 2
 
-echo "Running the command.."
-timeout $timeout $argv &| tee $log_dir/command.log
+echo "Sampling rate: $sample_rate" > $log_dir/command.log && \
+echo -e "\n###\n" >> $log_dir/command.log && \
+echo "Command: $argv" >> $log_dir/command.log && \
+echo -e "\n###\n" >> $log_dir/command.log && \
+echo "Environment:" >> $log_dir/command.log && \
+env | sort | uniq >> $log_dir/command.log && \
+echo -e "\n###\n" >> $log_dir/command.log && \
+echo "Standard output + error:" >> $log_dir/command.log && \
+echo "Running the command.." && \
+timeout $timeout $argv &| tee -a $log_dir/command.log
 echo "Command finished/timed out. Return code is $status"
 
 echo "Waiting for the background SWD monitoring to finish..."

@@ -216,6 +216,9 @@ fn complex_command(input: &str) -> IResult<&str, Vec<Input>> {
     let (input, rdbuff_ll_command) = ll::command(Dp::rdbuff, true)(input)?;
     let rdbuff_ll_command = match rdbuff_ll_command {
         ll::MaybeCommand::Ok(cmd) => cmd,
+        // TODO: Instead of returing a FAULT as "RDBUFF's FAULT", picking up the
+        // actual command (commands) that was (were) requested would give a better
+        // insight.
         v => return Ok((input, core::iter::once(v.into()).collect())),
     };
 
