@@ -593,7 +593,7 @@ impl VmState {
         });
 
         // Unwrap: If we got here, we must have accessed TAR so it exists for sure
-        let tar = &mut self.current_ap_mut().tar.unwrap();
+        let tar = self.current_ap_mut().tar.as_mut().unwrap();
         match (csw.addr_inc(), csw.size()) {
             (ap::CswAddrInc::Single, ap::CswSize::Word) => *tar += 4,
             (ap::CswAddrInc::Single, ap::CswSize::Halfword) => *tar += 2,
