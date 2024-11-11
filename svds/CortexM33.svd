@@ -4793,6 +4793,268 @@
               <description>Specifies the general-purpose register, special-purpose register, or FP register to transfer</description>
               <bitRange>[6:0]</bitRange>
               <access>read-write</access>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>R0</name>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>R1</name>
+                  <value>1</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>R2</name>
+                  <value>2</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>R3</name>
+                  <value>3</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>R4</name>
+                  <value>4</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>R5</name>
+                  <value>5</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>R6</name>
+                  <value>6</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>R7</name>
+                  <value>7</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>R8</name>
+                  <value>8</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>R9</name>
+                  <value>9</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>R10</name>
+                  <value>10</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>R11</name>
+                  <value>11</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>R12</name>
+                  <value>12</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>SP (stack pointer)</name>
+                  <value>0b1101</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>LR (link register)</name>
+                  <value>0b1110</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>DebugReturnAddress</name>
+                  <value>0b1111</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>XPSR (R) / EAPSR (W)</name>
+                  <value>0b10000</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>MSP (main stack pointer, SP_main)</name>
+                  <value>0b10001</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>MSP (process stack pointer, SP_process)</name>
+                  <value>0b10010</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>Current state (CONTROL | FAULTMASK | BASEPRI | PRIMASK )</name>
+                  <value>0b10100</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>MSP_NS (non-secure main stack pointer)</name>
+                  <value>0b11000</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>PSP_NS (non-secure process stack pointer)</name>
+                  <value>0b11001</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>0b00011001</value>
+                  <name>PSP_NS (non-secure process stack pointer)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>0b00011010</value>
+                  <name>MSP_S (secure main stack pointer)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>0b00011011</value>
+                  <name>PSP_S (secure process stack pointer)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>0b00011100</value>
+                  <name>MSPLIM_S (secure main stack limit)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>0b00011101</value>
+                  <name>PSPLIM_S (secure process stack limit)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>0b00011110</value>
+                  <name>MSPLIM_NS (non-secure main stack limit)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>0b00011111</value>
+                  <name>PSPLIM_NS (non-secure process stack limit)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>0b00100001</value>
+                  <name>FPSCR</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>0b00100010</value>
+                  <name>Secure state (CONTROL_S | FAULTMASK_S | BASEPRI_S | PRIMASK_S)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>0b00100011</value>
+                  <name>Non-secure state (CONTROL_NS | FAULTMASK_NS | BASEPRI_NS | PRIMASK_NS)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>0b00100100</value>
+                  <name>VPR</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>64</value>
+                  <name>S0 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>65</value>
+                  <name>S1 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>66</value>
+                  <name>S2 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>67</value>
+                  <name>S3 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>68</value>
+                  <name>S4 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>69</value>
+                  <name>S5 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>70</value>
+                  <name>S6 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>71</value>
+                  <name>S7 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>72</value>
+                  <name>S8 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>73</value>
+                  <name>S9 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>74</value>
+                  <name>S10 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>75</value>
+                  <name>S11 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>76</value>
+                  <name>S12 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>77</value>
+                  <name>S13 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>78</value>
+                  <name>S14 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>79</value>
+                  <name>S15 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>80</value>
+                  <name>S16 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>81</value>
+                  <name>S17 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>82</value>
+                  <name>S18 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>83</value>
+                  <name>S19 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>84</value>
+                  <name>S20 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>85</value>
+                  <name>S21 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>86</value>
+                  <name>S22 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>87</value>
+                  <name>S23 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>88</value>
+                  <name>S24 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>89</value>
+                  <name>S25 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>90</value>
+                  <name>S26 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>91</value>
+                  <name>S27 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>92</value>
+                  <name>S28 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>93</value>
+                  <name>S29 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>94</value>
+                  <name>S30 (FP register)</name>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <value>95</value>
+                  <name>S31 (FP register)</name>
+                </enumeratedValue>
+              </enumeratedValues>
             </field>
           </fields>
         </register>
