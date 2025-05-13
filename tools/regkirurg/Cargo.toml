@@ -1,0 +1,15 @@
+[package]
+name = "regkirurg"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+clio.workspace = true
+probe-rs.workspace = true
+env_logger.workspace = true
+svd-parser.workspace = true
+regex.workspace = true
+log.workspace = true
+regdoctor = { path = "../../libs/regdoctor" }

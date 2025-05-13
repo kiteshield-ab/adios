@@ -283,9 +283,9 @@ mod ll {
                 MaybeCommand::GotBoredOfWaits(access_id) => Input::Landmark(format!(
                     "WAIT spam with no resolution occurred when trying to {access_id:?}"
                 )),
-                MaybeCommand::Fault(access_id) => Input::Landmark(format!(
-                    "FAULT occurred when trying to {access_id:?}"
-                )),
+                MaybeCommand::Fault(access_id) => {
+                    Input::Landmark(format!("FAULT occurred when trying to {access_id:?}"))
+                }
                 MaybeCommand::Ok(command) => Input::Command(command.into()),
             }
         }
