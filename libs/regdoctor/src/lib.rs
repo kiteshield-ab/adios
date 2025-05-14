@@ -201,6 +201,22 @@ impl<'a> Display for RegisterDiffFromNothing<'a> {
     }
 }
 
+pub struct RegisterDiffToNothing<'a>(&'a Register);
+
+impl<'a> Display for RegisterDiffToNothing<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{:#010x} → 0x????????", self.0.value)?;
+        for field in self.0.fields.iter() {
+            write!(f, "  {} : {:#0x} → 0x?", field.info.name, field.value)?;
+            match &field.variant {
+                Some(variant) => writeln!(f, " / {} → ?", variant.name)?,
+                None => writeln!(f)?,
+            }
+        }
+        Ok(())
+    }
+}
+
 impl Debug for Register {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct(&self.info.identifier())
@@ -216,6 +232,9 @@ pub struct WrongRegister;
 impl Register {
     pub fn diff_from_nothing<'a>(&'a self) -> RegisterDiffFromNothing<'a> {
         RegisterDiffFromNothing(self)
+    }
+    pub fn diff_to_nothing<'a>(&'a self) -> RegisterDiffToNothing<'a> {
+        RegisterDiffToNothing(self)
     }
     pub fn diff(old: &Self, new: &Self) -> Result<Option<RegisterDiff>, WrongRegister> {
         if old.info.identifier() != new.info.identifier() {
